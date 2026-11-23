@@ -1,0 +1,14 @@
+services:
+  tickmark:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - tickmark-data:/app/server/data
+    restart: unless-stopped
+
+volumes:
+  tickmark-data:

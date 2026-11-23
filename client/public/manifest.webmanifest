@@ -1,0 +1,12 @@
+{
+  "name": "TickMark",
+  "short_name": "TickMark",
+  "description": "Ranks your homework, quizzes and tests and rings when it is time to start.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f2a44",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
