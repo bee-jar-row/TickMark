@@ -37,6 +37,8 @@ export const api = {
   remove: (id) => request('DELETE', `/tasks/${id}`),
   snooze: (id, minutes = 30) => request('POST', `/tasks/${id}/snooze`, { minutes }),
   demo: () => request('POST', '/demo'),
+  exportBackup: () => request('GET', '/backup'),
+  importBackup: (data) => request('POST', '/backup/import', data),
   pushKey: () => request('GET', '/push/key'),
   subscribe: (sub) => request('POST', '/push/subscribe', sub),
   testPush: () => request('POST', '/push/test'),

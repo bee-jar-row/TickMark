@@ -65,3 +65,23 @@ test('settings and manual order are saved', async () => {
   assert.equal(me.body.settings.silent, true);
   assert.deepEqual(me.body.manualOrder, ['a', 'b']);
 });
+
+test('backup export and import restores tasks and remaps ids across users', async () => {
+  const exported = await call('GET', '/backup');
+  assert.equal(exported.status, 200);
+  assert.equal(exported.body.version, 1);
+  assert.ok(exported.body.tasks.length >= 1);
+
+  const bad = await call('POST', '/backup/import', { tasks: [{ title: '' }] });
+  assert.equal(bad.status, 400);
+
+  const r2 = await fetch(base + '/backup/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user-id': 'test-user-0002' },
+    body: JSON.stringify(exported.body),
+  });
+  assert.equal(r2.status, 200);
+  const imported = await r2.json();
+  assert.equal(imported.tasks.length, exported.body.tasks.length);
+  assert.equal(imported.settings.silent, true);
+});

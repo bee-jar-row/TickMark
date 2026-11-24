@@ -181,6 +181,52 @@ export function createApp() {
     res.json(tasks);
   });
 
+  api.get('/backup', (req, res) => {
+    const tasks = db.prepare('SELECT * FROM tasks WHERE user_id = ? ORDER BY deadline').all(req.user.id).map(toTask);
+    res.json({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      settings: { ...DEFAULT_SETTINGS, ...JSON.parse(req.user.settings) },
+      manualOrder: JSON.parse(req.user.manual_order),
+      tasks,
+    });
+  });
+
+  api.post('/backup/import', (req, res) => {
+    const body = req.body || {};
+    if (!Array.isArray(body.tasks) || body.tasks.length > 500) {
+      throw new HttpError(400, 'tasks array is required (max 500)');
+    }
+    const idMap = new Map();
+    const cleaned = body.tasks.map((item) => {
+      const rawId = typeof item?.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(item.id) ? item.id : null;
+      const existing = rawId ? db.prepare('SELECT user_id FROM tasks WHERE id = ?').get(rawId) : null;
+      const id = rawId && (!existing || existing.user_id === req.user.id) ? rawId : crypto.randomUUID();
+      if (rawId) idMap.set(rawId, id);
+      return { id, data: clean(item || {}, { partial: false }) };
+    });
+
+    const nextSettings = { ...DEFAULT_SETTINGS };
+    if (body.settings && typeof body.settings === 'object') {
+      for (const k of Object.keys(DEFAULT_SETTINGS)) {
+        if (k in body.settings) nextSettings[k] = !!body.settings[k];
+      }
+    }
+    const nextOrder = Array.isArray(body.manualOrder)
+      ? body.manualOrder.filter((x) => typeof x === 'string').slice(0, 500).map((x) => idMap.get(x) || x)
+      : [];
+
+    const runImport = db.transaction(() => {
+      db.prepare('DELETE FROM tasks WHERE user_id = ?').run(req.user.id);
+      db.prepare('UPDATE users SET settings = ?, manual_order = ? WHERE id = ?')
+        .run(JSON.stringify(nextSettings), JSON.stringify(nextOrder), req.user.id);
+      return cleaned.map(({ id, data }) => insert(req.user.id, id, data));
+    });
+
+    const tasks = runImport();
+    res.json({ settings: nextSettings, manualOrder: nextOrder, tasks });
+  });
+
   api.post('/push/subscribe', (req, res) => {
     const sub = req.body;
     if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) throw new HttpError(400, 'bad subscription');

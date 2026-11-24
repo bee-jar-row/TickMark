@@ -168,6 +168,23 @@ export async function resetDemo() {
   } catch (e) { fail(e); }
 }
 
+export async function restoreBackup(data) {
+  try {
+    const res = await api.importBackup(data);
+    state.tasks = res.tasks;
+    state.settings = res.settings;
+    state.manualOrder = res.manualOrder;
+    state.history = [];
+    try { localStorage.setItem('tickmark.seeded', '1'); } catch { /* ignore */ }
+    go('list');
+    toast(`Restored ${res.tasks.length} task${res.tasks.length === 1 ? '' : 's'}`, false);
+    return true;
+  } catch (e) {
+    fail(e);
+    return false;
+  }
+}
+
 export async function snooze(id) {
   try {
     upsertLocal(await api.snooze(id, 30));
